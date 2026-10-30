@@ -1,1344 +1,498 @@
 <!DOCTYPE html>
-<!--
-=========================================================
-ALBERTO RIVAS — DATA & AI PORTFOLIO (single-file build)
-=========================================================
-
-Purpose:
-  Personal portfolio for Data / ML / GenAI roles. One self-contained
-  HTML file: markup, styles and vanilla JS, Tailwind via CDN.
-
-Logical flow (see bootstrap() at the bottom of the script):
-  1. Static icons are injected into [data-icon] placeholders.
-  2. Every section is rendered from PORTFOLIO_CONFIG (single source of truth).
-  3. Behaviours are attached: nav, ticker, counters, filters, timeline,
-     clipboard, contact form, AI assistant, neural background.
-  4. Each module boots inside initModule(): a failing module is logged
-     with context and does not break the rest of the page.
-
-Dependencies:
-  - Tailwind CSS Play CDN 3.4.17 (utility classes)
-  - Google Fonts: Inter (UI), JetBrains Mono (code & metrics)
-
-Inputs:
-  - PORTFOLIO_CONFIG: all content (profile, stats, skills, projects,
-    timeline, links, assistant answers). Edit ONLY there.
-  - UI_CONFIG: timings, animation and validation limits.
-
-Outputs:
-  - Fully rendered, responsive, accessible portfolio page.
-
-Important considerations:
-  - Links left empty in PORTFOLIO_CONFIG.links / project URLs are hidden,
-    never rendered as dead "#" links.
-  - The contact form has no backend: it validates input and opens the
-    visitor's mail client via mailto.
-  - The AI assistant is a simulated, client-side widget. Its answers are
-    generated from PORTFOLIO_CONFIG, so they stay in sync with the page.
-  - prefers-reduced-motion disables ticker, counters and particle motion.
-=========================================================
--->
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Alberto Rivas · Data & AI Portfolio</title>
-  <meta name="description" content="Alberto Rivas Casal — Data Analyst working with SQL, Tableau and Python, building machine learning and GenAI projects." />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#05070d" />
-  <meta property="og:title" content="Alberto Rivas — Data & AI Portfolio" />
-  <meta property="og:description" content="Analytics, machine learning and GenAI projects with measurable impact." />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="Alberto Rivas, Artificial Intelligence Technician at Alimerka. Process automation, data science and MLOps." />
+  <title>Alberto Rivas | AI Technician and Data Engineer</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
-          },
-          colors: { obsidian: '#05070d' },
-        },
-      },
-    };
-  </script>
-
-  <style>
-    /* ---------- Design tokens ---------- */
-    :root {
-      color-scheme: dark;
-      --bg: #05070d;
-      --surface: rgba(15, 23, 42, 0.55);
-      --border: rgba(148, 163, 184, 0.14);
-      --border-strong: rgba(148, 163, 184, 0.28);
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --cyan: #22d3ee;
-      --violet: #a78bfa;
-      --pink: #f0abfc;
-      --emerald: #34d399;
-      --danger: #f87171;
-      --radius: 1.25rem;
-    }
-
-    [hidden] { display: none !important; }
-    html { scroll-padding-top: 6rem; -webkit-text-size-adjust: 100%; }
-    @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
-    body { background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-    :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 0.5rem; }
-
-    .skip-link { position: absolute; left: -9999px; top: 1rem; z-index: 100; padding: .6rem 1rem; border-radius: .7rem; background: var(--cyan); color: #04111a; font-weight: 600; }
-    .skip-link:focus { left: 1rem; }
-
-    /* ---------- Background layers ---------- */
-    #neural-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-    .bg-aurora {
-      position: fixed; inset: -20%; z-index: 0; pointer-events: none;
-      background:
-        radial-gradient(40% 35% at 15% 10%, rgba(34, 211, 238, .12), transparent 70%),
-        radial-gradient(35% 30% at 85% 20%, rgba(167, 139, 250, .14), transparent 70%),
-        radial-gradient(40% 40% at 50% 100%, rgba(240, 171, 252, .06), transparent 70%);
-    }
-
-    /* ---------- Surfaces & buttons ---------- */
-    .glass {
-      background: var(--surface);
-      -webkit-backdrop-filter: blur(16px) saturate(140%);
-      backdrop-filter: blur(16px) saturate(140%);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-    }
-    .card-hover { transition: transform .35s cubic-bezier(.2,.8,.2,1), border-color .35s, box-shadow .35s; }
-    .card-hover:hover {
-      transform: translateY(-4px);
-      border-color: rgba(34, 211, 238, .35);
-      box-shadow: 0 24px 60px -24px rgba(34, 211, 238, .35), inset 0 0 0 1px rgba(167, 139, 250, .1);
-    }
-    .featured-ring { border-color: rgba(167, 139, 250, .35); }
-    .text-gradient {
-      background: linear-gradient(90deg, var(--cyan), var(--violet) 55%, var(--pink));
-      -webkit-background-clip: text; background-clip: text; color: transparent;
-    }
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-      border-radius: .9rem; padding: .75rem 1.2rem; font-weight: 600; font-size: .95rem;
-      transition: transform .2s, box-shadow .25s, background .25s, border-color .25s, color .25s;
-    }
-    .btn:active { transform: scale(.97); }
-    .btn-primary { color: #04111a; background: linear-gradient(135deg, var(--cyan), var(--violet)); box-shadow: 0 10px 30px -10px rgba(34, 211, 238, .6); }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 40px -10px rgba(167, 139, 250, .7); }
-    .btn-ghost { color: var(--text); border: 1px solid var(--border-strong); background: rgba(15, 23, 42, .4); }
-    .btn-ghost:hover { transform: translateY(-2px); border-color: var(--cyan); color: #fff; }
-
-    .badge {
-      display: inline-flex; align-items: center; gap: .3rem; border-radius: 999px;
-      border: 1px solid var(--border); background: rgba(30, 41, 59, .5);
-      padding: .25rem .65rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: #cbd5e1;
-      transition: border-color .2s, color .2s, background .2s;
-    }
-    button.badge:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(34, 211, 238, .08); }
-
-    /* ---------- Navigation ---------- */
-    #site-header { padding-top: env(safe-area-inset-top, 0px); }
-    #site-header .nav-shell { transition: background .3s, box-shadow .3s; }
-    #site-header.is-scrolled .nav-shell { background: rgba(5, 7, 13, .78); box-shadow: 0 10px 40px -20px rgba(0, 0, 0, .8); }
-    .nav-link { display: block; padding: .5rem .85rem; border-radius: .7rem; color: var(--muted); transition: color .2s, background .2s; }
-    .nav-link:hover { color: #fff; }
-    .nav-link.is-active { color: #fff; background: rgba(34, 211, 238, .1); }
-
-    /* ---------- Hero ---------- */
-    .ticker-cursor::after {
-      content: ''; display: inline-block; width: .55em; height: 1.1em; margin-left: .15em;
-      vertical-align: -.18em; background: var(--cyan); animation: blink 1s steps(1) infinite;
-    }
-    @keyframes blink { 50% { opacity: 0; } }
-    .pulse-dot { width: .5rem; height: .5rem; border-radius: 999px; background: var(--emerald); animation: pulse 2s infinite; }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, .6); }
-      70%, 100% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); }
-    }
-    .term-line { opacity: 0; animation: termIn .4s ease forwards; animation-delay: var(--delay, 0ms); }
-    @keyframes termIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
-
-    /* ---------- Reveal on scroll ---------- */
-    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); transition-delay: var(--delay, 0ms); }
-    .reveal.is-visible { opacity: 1; transform: none; }
-
-    /* ---------- Skills ---------- */
-    .skill-bar { height: 6px; border-radius: 999px; background: rgba(148, 163, 184, .12); overflow: hidden; }
-    .skill-bar > span {
-      display: block; height: 100%; border-radius: inherit;
-      background: linear-gradient(90deg, var(--cyan), var(--violet));
-      transform-origin: left; transform: scaleX(0); transition: transform 1.4s cubic-bezier(.2,.8,.2,1) .2s;
-    }
-    .is-visible .skill-bar > span { transform: scaleX(var(--level)); }
-    .code-snippet .tok-k { color: var(--violet); }
-    .code-snippet .tok-v { color: var(--cyan); }
-    .code-snippet .tok-s { color: #86efac; }
-    .code-snippet .tok-b { color: #fda4af; }
-
-    /* ---------- Projects ---------- */
-    .filter-btn {
-      display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap;
-      padding: .55rem 1rem; border-radius: 999px; border: 1px solid var(--border-strong);
-      background: rgba(15, 23, 42, .5); color: var(--muted); font-size: .875rem; font-weight: 500;
-      transition: color .2s, border-color .2s, background .2s;
-    }
-    .filter-btn:hover { color: #fff; border-color: var(--cyan); }
-    .filter-btn[aria-selected="true"] { color: #04111a; background: linear-gradient(135deg, var(--cyan), var(--violet)); border-color: transparent; }
-    .filter-count { font-family: 'JetBrains Mono', monospace; font-size: .7rem; opacity: .75; }
-    .project-card { animation: cardIn .45s ease both; }
-    @keyframes cardIn { from { opacity: 0; transform: translateY(12px) scale(.98); } }
-    .metric { border: 1px solid var(--border); background: rgba(2, 6, 23, .45); border-radius: .85rem; padding: .6rem .75rem; }
-
-    /* ---------- Timeline ---------- */
-    .timeline { position: relative; }
-    .timeline::before { content: ''; position: absolute; left: 11px; top: 8px; bottom: 8px; width: 2px; background: linear-gradient(var(--cyan), var(--violet), transparent); }
-    .timeline-dot { position: absolute; left: 4px; top: 1.6rem; width: 16px; height: 16px; border-radius: 999px; background: var(--bg); border: 2px solid var(--cyan); box-shadow: 0 0 14px rgba(34, 211, 238, .6); }
-    .timeline-details { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s ease; }
-    .timeline-details > div { overflow: hidden; }
-    .timeline-item.is-open .timeline-details { grid-template-rows: 1fr; }
-    .chevron { transition: transform .3s; }
-    .timeline-item.is-open .chevron { transform: rotate(180deg); }
-
-    /* ---------- Forms, copy & toast ---------- */
-    .field {
-      width: 100%; border-radius: .85rem; border: 1px solid var(--border-strong);
-      background: rgba(2, 6, 23, .55); padding: .8rem 1rem; color: var(--text); font-size: 1rem;
-      outline: none; transition: border-color .2s, box-shadow .2s;
-    }
-    .field::placeholder { color: #64748b; }
-    .field:focus { border-color: var(--cyan); box-shadow: 0 0 0 4px rgba(34, 211, 238, .15); }
-    .field[aria-invalid="true"] { border-color: var(--danger); }
-    .field-label { display: block; margin-bottom: .4rem; font-size: .85rem; font-weight: 500; color: #cbd5e1; }
-    .field-error { min-height: 1.1rem; margin-top: .3rem; font-size: .78rem; color: var(--danger); }
-    #form-status[data-state="error"] { color: var(--danger); }
-    #form-status[data-state="success"] { color: var(--emerald); }
-    .copy-btn {
-      display: grid; place-items: center; width: 2.4rem; height: 2.4rem; flex-shrink: 0; border-radius: .75rem;
-      border: 1px solid var(--border-strong); color: var(--muted); transition: color .2s, border-color .2s, background .2s;
-    }
-    .copy-btn:hover { color: var(--cyan); border-color: var(--cyan); background: rgba(34, 211, 238, .08); }
-    .copy-btn.is-copied { color: var(--emerald); border-color: var(--emerald); }
-    .toast {
-      position: fixed; left: 50%; bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); z-index: 60;
-      transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
-      padding: .7rem 1.1rem; border-radius: .9rem; font-size: .9rem; font-weight: 500;
-      background: rgba(15, 23, 42, .95); border: 1px solid var(--emerald); color: #d1fae5;
-      transition: opacity .25s, transform .25s;
-    }
-    .toast[data-variant="error"] { border-color: var(--danger); color: #fee2e2; }
-    .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
-
-    /* ---------- AI assistant ---------- */
-    .chat-launcher {
-      position: fixed; z-index: 50;
-      right: calc(1rem + env(safe-area-inset-right, 0px)); bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-      display: inline-flex; align-items: center; gap: .55rem; padding: .85rem 1.1rem; border-radius: 999px;
-      color: #04111a; font-weight: 600; font-size: .9rem;
-      background: linear-gradient(135deg, var(--cyan), var(--violet));
-      box-shadow: 0 12px 40px -10px rgba(34, 211, 238, .7); transition: transform .2s;
-    }
-    .chat-launcher:hover { transform: translateY(-2px) scale(1.02); }
-    .chat-launcher::before {
-      content: ''; position: absolute; inset: -4px; border-radius: inherit; z-index: -1;
-      border: 2px solid rgba(34, 211, 238, .5); animation: ring 2.6s ease-out infinite;
-    }
-    @keyframes ring { from { opacity: .8; transform: scale(.95); } to { opacity: 0; transform: scale(1.25); } }
-    .chat-panel {
-      position: fixed; z-index: 50; display: flex; flex-direction: column;
-      right: calc(1rem + env(safe-area-inset-right, 0px)); bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
-      width: min(390px, calc(100vw - 2rem)); height: min(580px, calc(100dvh - 7.5rem));
-      background: rgba(8, 12, 24, .92); transform-origin: bottom right;
-      opacity: 0; visibility: hidden; transform: translateY(12px) scale(.96); pointer-events: none;
-      transition: opacity .25s, transform .25s, visibility .25s;
-    }
-    .chat-panel.is-open { opacity: 1; visibility: visible; transform: none; pointer-events: auto; }
-    .msg { max-width: 88%; padding: .7rem .9rem; border-radius: 1rem; font-size: .9rem; line-height: 1.55; animation: cardIn .3s ease both; }
-    .msg-bot { background: rgba(30, 41, 59, .7); border: 1px solid var(--border); border-bottom-left-radius: .3rem; color: #cbd5e1; }
-    .msg-user { margin-left: auto; color: #04111a; font-weight: 500; background: linear-gradient(135deg, var(--cyan), var(--violet)); border-bottom-right-radius: .3rem; }
-    .msg strong { color: #fff; font-weight: 600; }
-    .chat-list { margin-top: .5rem; display: grid; gap: .35rem; }
-    .chat-list li { padding-left: 1rem; position: relative; }
-    .chat-list li::before { content: '▹'; position: absolute; left: 0; color: var(--cyan); }
-    .chip {
-      white-space: nowrap; padding: .45rem .8rem; border-radius: 999px; font-size: .8rem;
-      border: 1px solid rgba(34, 211, 238, .35); color: #a5f3fc; background: rgba(34, 211, 238, .06);
-      transition: background .2s, color .2s;
-    }
-    .chip:hover { background: rgba(34, 211, 238, .16); color: #fff; }
-    .typing { display: inline-flex; gap: .3rem; }
-    .typing span { width: .45rem; height: .45rem; border-radius: 999px; background: var(--cyan); animation: bounce 1s infinite; }
-    .typing span:nth-child(2) { animation-delay: .15s; }
-    .typing span:nth-child(3) { animation-delay: .3s; }
-    @keyframes bounce { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
-    .no-scrollbar { scrollbar-width: none; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-      .reveal { opacity: 1; transform: none; }
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
+  <script>document.documentElement.classList.add('js');</script>
 </head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-<body class="font-sans antialiased selection:bg-cyan-400/30">
-  <a href="#main" class="skip-link">Skip to content</a>
-  <canvas id="neural-canvas" aria-hidden="true"></canvas>
-  <div class="bg-aurora" aria-hidden="true"></div>
+  <!-- Icon sprite -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+      <symbol id="i-ext" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
+      <symbol id="i-mail" viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
+      <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></symbol>
+      <symbol id="i-linkedin" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+      <symbol id="i-replay" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+    </defs>
+  </svg>
 
-  <!-- ===== Header / navigation ===== -->
-  <header id="site-header" class="fixed inset-x-0 top-0 z-40">
-    <nav class="mx-auto max-w-6xl px-4 sm:px-6 mt-3" aria-label="Main">
-      <div class="nav-shell glass !rounded-2xl flex items-center justify-between gap-4 px-4 py-2.5">
-        <a href="#hero" class="font-mono text-sm font-bold tracking-tight text-white">
-          <span class="text-cyan-300">&lt;</span>alberto<span class="text-violet-300">.data</span><span class="text-cyan-300"> /&gt;</span>
-        </a>
-        <ul id="nav-links" class="hidden md:flex items-center gap-1 text-sm"></ul>
-        <a href="#contact" class="btn btn-primary !py-2 !px-4 text-sm hidden md:inline-flex">Hire me</a>
-        <button id="nav-toggle" type="button" class="md:hidden grid place-items-center w-10 h-10 rounded-xl text-slate-200 hover:bg-white/5" aria-expanded="false" aria-controls="mobile-menu" aria-label="Toggle menu"></button>
-      </div>
-      <div id="mobile-menu" class="md:hidden hidden glass !rounded-2xl mt-2 p-2">
-        <ul id="mobile-nav-links" class="grid gap-1 text-base"></ul>
-      </div>
+  <canvas id="net" aria-hidden="true"></canvas>
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="cursor-glow" id="cursor-glow" aria-hidden="true"></div>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <nav class="nav glass" aria-label="Main">
+      <a class="nav__logo" href="#hero" translate="no">
+        <span class="c-cyan">&lt;</span>alberto<span class="c-violet">.rivas</span><span class="c-cyan"> /&gt;</span>
+      </a>
+      <ul class="nav__links" id="nav-links">
+        <li><a class="nav__link" href="#skills">Skills</a></li>
+        <li><a class="nav__link" href="#experience">Experience</a></li>
+        <li><a class="nav__link" href="#projects">Projects</a></li>
+        <li><a class="nav__link" href="#courses">Courses</a></li>
+        <li><a class="nav__link" href="#contact">Contact</a></li>
+      </ul>
+      <a class="btn btn--primary btn--sm nav__cta" href="#contact">Get in touch</a>
+      <button class="nav__toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
+        <svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
     </nav>
+    <div class="mobile-menu glass" id="mobile-menu" hidden>
+      <ul>
+        <li><a href="#skills">Skills</a></li>
+        <li><a href="#experience">Experience</a></li>
+        <li><a href="#projects">Projects</a></li>
+        <li><a href="#courses">Courses</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </div>
   </header>
 
-  <main id="main" class="relative z-10">
-    <!-- ===== Hero ===== -->
-    <section id="hero" class="min-h-[100svh] flex items-center pt-32 pb-16">
-      <div class="mx-auto max-w-6xl px-4 sm:px-6 w-full grid lg:grid-cols-[1.25fr_1fr] gap-12 items-center">
-        <div>
-          <div class="reveal inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
-            <span class="pulse-dot" aria-hidden="true"></span><span data-bind="availability"></span>
-          </div>
-          <h1 class="reveal mt-6 text-4xl sm:text-6xl lg:text-[4.25rem] font-extrabold tracking-tight leading-[1.04] text-white" style="--delay:80ms">
-            Hi, I'm <span data-bind="firstName"></span>.<br /><span class="text-gradient">I turn raw data into decisions.</span>
-          </h1>
-          <p class="reveal mt-6 font-mono text-lg sm:text-xl text-slate-300" style="--delay:160ms">
-            <span class="text-slate-500" aria-hidden="true">&gt;</span>
-            <span id="role-ticker" class="text-cyan-300 ticker-cursor" aria-hidden="true"></span>
-            <span id="role-ticker-sr" class="sr-only"></span>
+  <main id="main">
+    <!-- Hero -->
+    <section class="hero" id="hero" aria-labelledby="hero-title">
+      <div class="container hero__grid">
+        <div class="hero__copy">
+          <p class="status reveal">
+            <span class="pulse" aria-hidden="true"></span>
+            Full-time at Alimerka, Asturias
           </p>
-          <p class="reveal mt-5 max-w-xl text-slate-400 leading-relaxed" style="--delay:240ms" data-bind="tagline"></p>
-          <div class="reveal mt-8 flex flex-wrap gap-3" style="--delay:320ms">
-            <a href="#projects" class="btn btn-primary"><span data-icon="sparkles" data-icon-class="w-4 h-4"></span>View projects</a>
-            <a href="#contact" class="btn btn-ghost"><span data-icon="mail" data-icon-class="w-4 h-4"></span>Get in touch</a>
-            <a id="cv-link" class="btn btn-ghost" target="_blank" rel="noopener noreferrer" hidden><span data-icon="download" data-icon-class="w-4 h-4"></span>Download CV</a>
+          <h1 class="hero__title reveal" id="hero-title" style="--d:80ms">
+            I audit automation<br />
+            <span class="text-gradient">and unblock the flow.</span>
+          </h1>
+          <p class="hero__role reveal" style="--d:160ms">
+            <span class="c-dim" aria-hidden="true">&gt;</span>
+            <span id="ticker" class="ticker" aria-hidden="true">Artificial Intelligence Technician</span>
+            <span class="sr-only">Artificial Intelligence Technician at Alimerka, full-time</span>
+          </p>
+          <p class="hero__lede reveal" style="--d:240ms">
+            I’m Alberto Rivas. I analyse how automation really runs across a company,
+            find the bottlenecks where work waits, and turn them into shorter operational
+            times and a more profitable business.
+          </p>
+          <div class="hero__cta reveal" style="--d:320ms">
+            <a class="btn btn--primary" href="#projects">View projects</a>
+            <a class="btn btn--ghost" href="#contact">Get in touch</a>
           </div>
         </div>
 
-        <!-- Hero terminal: the page's signature visual -->
-        <div class="reveal hidden lg:block" style="--delay:200ms" aria-hidden="true">
-          <div class="glass overflow-hidden shadow-[0_40px_120px_-40px_rgba(34,211,238,.45)]">
-            <div class="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-              <span class="w-3 h-3 rounded-full bg-rose-400/80"></span><span class="w-3 h-3 rounded-full bg-amber-300/80"></span><span class="w-3 h-3 rounded-full bg-emerald-400/80"></span>
-              <span class="ml-3 font-mono text-xs text-slate-500">~/portfolio/pipeline</span>
+        <div class="terminal glass reveal" style="--d:200ms">
+          <div class="terminal__bar">
+            <span class="dot dot--r"></span><span class="dot dot--y"></span><span class="dot dot--g"></span>
+            <span class="terminal__title" translate="no">~/audit/run.sh</span>
+            <button class="icon-btn" id="term-replay" type="button" aria-label="Replay the audit animation">
+              <svg class="icon" aria-hidden="true"><use href="#i-replay"/></svg>
+            </button>
+          </div>
+          <div class="terminal__body" id="terminal" aria-hidden="true"></div>
+          <p class="sr-only">Illustrative terminal output: workflows are mapped, a bottleneck is detected, and an optimisation is proposed.</p>
+        </div>
+
+        <dl class="stats reveal" style="--d:400ms">
+          <div class="stat glass"><dt>Projects</dt><dd data-count="3">3</dd></div>
+          <div class="stat glass"><dt>Hackathon</dt><dd data-count="1">1</dd></div>
+          <div class="stat glass"><dt>Certificates</dt><dd data-count="4">4</dd></div>
+          <div class="stat glass"><dt>Universities</dt><dd data-count="2">2</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- Skills -->
+    <section class="section" id="skills" aria-labelledby="skills-title">
+      <div class="container">
+        <div class="section__head reveal">
+          <h2 class="h2" id="skills-title">Skills</h2>
+          <p>
+            From raw data to models in production. Tools with a cyan outline are used in my
+            projects: select one to see where.
+          </p>
+        </div>
+
+        <div class="skills">
+          <article class="skill glass reveal">
+            <h3>Languages</h3>
+            <ul class="badges" translate="no">
+              <li><button class="badge badge--tool" type="button" data-tool="python">Python</button></li>
+              <li><span class="badge">SQL</span></li>
+              <li><span class="badge">R</span></li>
+            </ul>
+          </article>
+          <article class="skill glass reveal" style="--d:60ms">
+            <h3>Data engineering</h3>
+            <ul class="badges" translate="no">
+              <li><span class="badge">Apache Spark</span></li>
+              <li><span class="badge">Apache Kafka</span></li>
+              <li><span class="badge">Apache Airflow</span></li>
+              <li><span class="badge">dbt</span></li>
+              <li><span class="badge">Flink</span></li>
+              <li><span class="badge">Hadoop</span></li>
+            </ul>
+          </article>
+          <article class="skill glass reveal" style="--d:120ms">
+            <h3>ML and MLOps</h3>
+            <ul class="badges" translate="no">
+              <li><span class="badge">MLflow</span></li>
+              <li><span class="badge">Kubeflow</span></li>
+              <li><button class="badge badge--tool" type="button" data-tool="scikit-learn">scikit-learn</button></li>
+              <li><span class="badge">TensorFlow</span></li>
+              <li><button class="badge badge--tool" type="button" data-tool="pytorch">PyTorch</button></li>
+              <li><span class="badge">Weights&nbsp;&amp;&nbsp;Biases</span></li>
+            </ul>
+          </article>
+          <article class="skill glass reveal">
+            <h3>Cloud and infrastructure</h3>
+            <ul class="badges" translate="no">
+              <li><span class="badge">AWS</span></li>
+              <li><span class="badge">Azure</span></li>
+              <li><span class="badge">Docker</span></li>
+              <li><span class="badge">Kubernetes</span></li>
+            </ul>
+          </article>
+          <article class="skill glass reveal" style="--d:60ms">
+            <h3>Data stores</h3>
+            <ul class="badges" translate="no">
+              <li><span class="badge">Snowflake</span></li>
+              <li><span class="badge">BigQuery</span></li>
+              <li><span class="badge">PostgreSQL</span></li>
+              <li><span class="badge">MongoDB</span></li>
+            </ul>
+          </article>
+          <article class="skill glass reveal" style="--d:120ms">
+            <h3>Analytics and visualisation</h3>
+            <ul class="badges" translate="no">
+              <li><span class="badge">Power BI</span></li>
+              <li><button class="badge badge--tool" type="button" data-tool="d3.js">D3.js</button></li>
+              <li><span class="badge">Grafana</span></li>
+              <li><button class="badge badge--tool" type="button" data-tool="pandas">Pandas</button></li>
+              <li><span class="badge">Plotly</span></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Experience -->
+    <section class="section" id="experience" aria-labelledby="exp-title">
+      <div class="container container--narrow">
+        <div class="section__head reveal">
+          <h2 class="h2" id="exp-title">Work experience</h2>
+          <p>Where I’ve applied data and automation to real operations.</p>
+        </div>
+
+        <ol class="timeline" id="timeline">
+          <li class="t-item reveal">
+            <div class="t-logo t-logo--now" data-fallback="A">
+              <img src="assets/alimerka-mark.svg" alt="" width="44" height="44" />
             </div>
-            <div id="hero-terminal" class="p-5 font-mono text-[0.82rem] leading-7"></div>
-          </div>
-        </div>
+            <article class="t-card glass t-card--now">
+              <div class="t-top">
+                <p class="t-date"><time>Oct 2026</time> to present</p>
+                <span class="tag-ft">Full-time</span>
+              </div>
+              <img class="t-brand" src="assets/alimerka-logo.svg" alt="Alimerka" width="126" height="28" />
+              <h3>Artificial Intelligence Technician</h3>
+              <p class="t-company">Alimerka, Asturias, Spain. Full-time position.</p>
+              <p>
+                I analyse and audit the automation processes running across the entire
+                company, mapping how work really moves and where it stalls. By pinpointing
+                bottlenecks, I cut operational times, streamline workflows and lift the
+                profitability of the whole business.
+              </p>
+              <ul class="badges badges--sm" translate="no">
+                <li><span class="badge">Process auditing</span></li>
+                <li><span class="badge">Automation</span></li>
+                <li><span class="badge">Workflow optimisation</span></li>
+                <li><span class="badge">AI</span></li>
+              </ul>
+            </article>
+          </li>
 
-        <dl id="stats-grid" class="reveal lg:col-span-2 grid grid-cols-2 lg:grid-cols-4 gap-3" style="--delay:400ms"></dl>
+          <li class="t-item reveal">
+            <div class="t-logo" data-fallback="C">
+              <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzU5dXljNmxmbHBobm1jdnRsMzl6czJ3bDN1anZlaGhhbjNyZjU3eiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Tlemc1Y9TOzDxT4aGC/giphy.gif" alt="COFAS logo" width="44" height="44" loading="lazy" />
+            </div>
+            <article class="t-card glass">
+              <p class="t-date"><time>Jul 2025</time> to <time>Sep 2025</time></p>
+              <h3>Data Engineering Intern</h3>
+              <p class="t-company">COFAS, Asturias, Spain</p>
+              <p>
+                Applied advanced combinatorial optimisation to a real Travelling Salesman
+                Problem in a logistics context. Designed and implemented algorithms that
+                reduced routing complexity and processing overhead, turning theoretical
+                models into measurable operational improvements.
+              </p>
+              <ul class="badges badges--sm" translate="no">
+                <li><span class="badge">Python</span></li>
+                <li><span class="badge">Optimisation algorithms</span></li>
+                <li><span class="badge">TSP</span></li>
+                <li><span class="badge">Data analysis</span></li>
+                <li><span class="badge">Operations research</span></li>
+              </ul>
+            </article>
+          </li>
+        </ol>
       </div>
     </section>
 
-    <!-- ===== About & expertise ===== -->
-    <section id="about" class="py-24">
-      <div class="mx-auto max-w-6xl px-4 sm:px-6">
-        <div class="reveal max-w-2xl">
-          <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white">Expertise matrix</h2>
-          <p class="mt-3 text-slate-400">Where I'm strongest and what I'm building towards. Click any tool to see the projects that use it.</p>
+    <!-- Projects -->
+    <section class="section" id="projects" aria-labelledby="projects-title">
+      <div class="container">
+        <div class="section__head reveal">
+          <h2 class="h2" id="projects-title">Projects</h2>
+          <p>Each one is measured by the result it produced, not only the stack behind it.</p>
         </div>
-        <div class="mt-12 grid lg:grid-cols-[1fr_2fr] gap-6 items-start">
-          <aside id="about-card" class="glass reveal p-6 sm:p-7 lg:sticky lg:top-28"></aside>
-          <div id="skills-grid" class="grid sm:grid-cols-2 gap-4"></div>
+
+        <div class="filters reveal" role="group" aria-label="Filter projects by category" id="filters">
+          <button class="filter" type="button" data-cat="all" aria-pressed="true">All <span class="filter__n" data-n="all"></span></button>
+          <button class="filter" type="button" data-cat="visual" aria-pressed="false">Visual analytics <span class="filter__n" data-n="visual"></span></button>
+          <button class="filter" type="button" data-cat="biometrics" aria-pressed="false">Biometrics <span class="filter__n" data-n="biometrics"></span></button>
+          <button class="filter" type="button" data-cat="vision" aria-pressed="false">Computer vision <span class="filter__n" data-n="vision"></span></button>
+          <button class="filter" type="button" data-cat="hackathon" aria-pressed="false">Hackathon <span class="filter__n" data-n="hackathon"></span></button>
         </div>
+
+        <p class="tool-status" id="tool-status" hidden>
+          Showing projects that use <span class="badge badge--on" id="tool-label" translate="no"></span>
+          <button class="link-btn" id="tool-clear" type="button">Clear filter</button>
+        </p>
+
+        <div class="projects" id="projects-grid" aria-live="polite">
+          <article class="project glass" data-cat="visual" data-tools="d3.js python pandas scikit-learn">
+            <header class="project__head">
+              <h3>SpotifyVA: interactive visual analytics</h3>
+              <p class="project__meta">Fall 2025, with Carlos Fernández, Sapienza University</p>
+            </header>
+            <p>
+              A dashboard exploring the acoustic landscape of Spotify’s top-streamed songs of
+              2023. It reduces the audio features with t-SNE, lets you lasso a region to get
+              on-demand statistics, and keeps three views in sync: a scatter plot, a radar
+              chart and a correlation heatmap.
+            </p>
+            <dl class="metrics">
+              <div class="metric"><dd>953</dd><dt>songs</dt></div>
+              <div class="metric"><dd>8</dd><dt>audio features</dt></div>
+              <div class="metric"><dd>3</dd><dt>linked views</dt></div>
+            </dl>
+            <ul class="badges badges--sm" translate="no">
+              <li><span class="badge">D3.js</span></li><li><span class="badge">Python</span></li><li><span class="badge">Pandas</span></li><li><span class="badge">scikit-learn</span></li><li><span class="badge">t-SNE</span></li>
+            </ul>
+            <p class="project__links">
+              <a class="chip-link" href="https://uo295831.github.io/Visual_Analytics/" target="_blank" rel="noopener">Live demo <svg class="icon icon--sm" aria-hidden="true"><use href="#i-ext"/></svg></a>
+              <a class="chip-link" href="https://github.com/UO295831/Visual_Analytics" target="_blank" rel="noopener">GitHub <svg class="icon icon--sm" aria-hidden="true"><use href="#i-ext"/></svg></a>
+            </p>
+          </article>
+
+          <article class="project glass" data-cat="biometrics" data-tools="python scikit-learn pandas">
+            <header class="project__head">
+              <h3>Keystroke Dynamics: secure authentication</h3>
+              <p class="project__meta">AY 2025/2026, with Mauricio Riva, Sapienza University</p>
+            </header>
+            <p>
+              A three-layer behavioural biometric framework that turns the login box into a
+              sensor. It detects bots, estimates age and verifies identity from keystroke
+              timing, and includes a live demo that captures real users.
+            </p>
+            <dl class="metrics">
+              <div class="metric"><dd>92.78%</dd><dt>bot detection</dt></div>
+              <div class="metric"><dd>76.4%</dd><dt>age within ±10 years</dt></div>
+              <div class="metric"><dd>93.06%</dd><dt>identity Rank-1</dt></div>
+            </dl>
+            <ul class="badges badges--sm" translate="no">
+              <li><span class="badge">Python</span></li><li><span class="badge">scikit-learn</span></li><li><span class="badge">Random Forest</span></li><li><span class="badge">Pandas</span></li><li><span class="badge">NumPy</span></li>
+            </ul>
+            <p class="project__links">
+              <a class="chip-link" href="https://github.com/alr7047/Keystroke-Dynamics" target="_blank" rel="noopener">GitHub <svg class="icon icon--sm" aria-hidden="true"><use href="#i-ext"/></svg></a>
+              <a class="chip-link" href="https://github.com/alr7047/Keystroke-Dynamics/blob/main/Biometrics_Report/main.pdf" target="_blank" rel="noopener">Report (PDF) <svg class="icon icon--sm" aria-hidden="true"><use href="#i-ext"/></svg></a>
+            </p>
+          </article>
+
+          <article class="project glass" data-cat="vision" data-tools="python pytorch scikit-learn">
+            <header class="project__head">
+              <h3>AI image forensics: multi-task detection</h3>
+              <p class="project__meta">AY 2025/2026, with Carlos Fernández and Joaquín Aviles, Sapienza University</p>
+            </header>
+            <p>
+              One ConvNeXt-Tiny backbone with two heads tells whether an image is a real
+              photograph or AI-generated, and which alteration was applied. Training both
+              tasks together matched single-task authenticity and beat the single-task
+              transform ceiling by 3.5&nbsp;points.
+            </p>
+            <dl class="metrics">
+              <div class="metric"><dd>93.73%</dd><dt>authenticity accuracy</dt></div>
+              <div class="metric"><dd>94.40%</dd><dt>transform accuracy</dt></div>
+              <div class="metric"><dd>0.9876</dd><dt>authenticity AUC</dt></div>
+            </dl>
+            <ul class="badges badges--sm" translate="no">
+              <li><span class="badge">PyTorch</span></li><li><span class="badge">ConvNeXt-Tiny</span></li><li><span class="badge">torchvision</span></li><li><span class="badge">OpenCV</span></li><li><span class="badge">scikit-learn</span></li>
+            </ul>
+            <p class="project__links">
+              <a class="chip-link" href="https://github.com/UO295831/Computer-Vision-project-2.git" target="_blank" rel="noopener">GitHub <svg class="icon icon--sm" aria-hidden="true"><use href="#i-ext"/></svg></a>
+            </p>
+          </article>
+
+          <article class="project project--award glass" data-cat="hackathon" data-tools="">
+            <header class="project__head">
+              <h3>BesttechRome hackathon: AgentIc competition</h3>
+              <p class="project__meta">Nov 2025, Rome, Italy</p>
+            </header>
+            <p>
+              Designed and deployed a preventative-health AI agent during the competition.
+              It turns self-reported data into actionable insights, addressing the economic
+              and logistical barriers to medical access.
+            </p>
+            <p class="project__links">
+              <a class="chip-link" href="https://www.linkedin.com/in/alberto-rivas-casal-158316327/overlay/Certifications/1596691423/treasury/?profileId=ACoAAFJzTlQBdUCXcsDe7ppoL6VC1khjww1r0h4" target="_blank" rel="noopener">View on LinkedIn <svg class="icon icon--sm" aria-hidden="true"><use href="#i-ext"/></svg></a>
+            </p>
+          </article>
+        </div>
+
+        <p class="empty glass" id="projects-empty" hidden>
+          No projects match this filter. Choose another category or clear the tool filter.
+        </p>
       </div>
     </section>
 
-    <!-- ===== Projects ===== -->
-    <section id="projects" class="py-24">
-      <div class="mx-auto max-w-6xl px-4 sm:px-6">
-        <div class="reveal flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-          <div class="max-w-2xl">
-            <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white">Featured projects</h2>
-            <p class="mt-3 text-slate-400">Each project is measured by the outcome it produced, not just the stack it used.</p>
-          </div>
+    <!-- Education and courses -->
+    <section class="section" id="courses" aria-labelledby="courses-title">
+      <div class="container">
+        <div class="section__head reveal">
+          <h2 class="h2" id="courses-title">Education and courses</h2>
+          <p>The academic base and the certificates behind it.</p>
         </div>
-        <div class="mt-8 flex flex-col gap-3">
-          <div id="project-filters" role="tablist" aria-label="Filter projects by category" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
-          <div id="tool-filter" class="flex items-center gap-2 text-sm text-slate-400" hidden>
-            Showing projects that use
-            <span class="badge !border-cyan-400/50 !text-cyan-200" id="tool-filter-label"></span>
-            <button id="tool-filter-clear" type="button" class="text-cyan-300 hover:text-white underline underline-offset-4">Clear filter</button>
-          </div>
+
+        <div class="edu">
+          <article class="edu__card glass reveal">
+            <p class="t-date">2022 to present</p>
+            <h3>BSc Data Science and Engineering</h3>
+            <p class="t-company">Universidad de Oviedo, Asturias</p>
+            <p>
+              Statistical modelling, big-data infrastructure, machine learning and software
+              engineering, with an MLOps track covering CI/CD for ML, model registries,
+              feature stores and production monitoring.
+            </p>
+          </article>
+          <article class="edu__card glass reveal" style="--d:80ms">
+            <p class="t-date">2025 to 2026</p>
+            <h3>Erasmus exchange</h3>
+            <p class="t-company">Sapienza University of Rome, Italy</p>
+            <p>
+              Master-level modules in cybersecurity and advanced computer science: network
+              security architectures, applied cryptography and secure systems design.
+            </p>
+          </article>
         </div>
-        <div id="projects-grid" class="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-5" aria-live="polite"></div>
-        <p id="projects-empty" class="mt-8 glass p-6 text-slate-400" hidden>No projects match this filter yet. Pick another category or clear the tool filter.</p>
+
+        <ul class="courses">
+          <li class="course glass reveal">
+            <time>Sep 2025</time>
+            <h3>Introduction to Cybersecurity</h3>
+            <p>Cisco Networking Academy</p>
+            <a class="chip-link" href="https://www.credly.com/badges/98ccd47d-d03b-43cf-9e06-cc42e0bcb447/linked_in_profile" target="_blank" rel="noopener">Certificate <svg class="icon icon--sm" aria-hidden="true"><use href="#i-ext"/></svg></a>
+          </li>
+          <li class="course glass reveal" style="--d:60ms">
+            <time>Apr 2025</time>
+            <h3>Generative AI for Productivity</h3>
+            <p>Universidad de Oviedo</p>
+            <a class="chip-link" href="https://www.linkedin.com/in/alberto-rivas-casal-158316327/overlay/Certifications/809339213/treasury/?profileId=ACoAAFJzTlQBdUCXcsDe7ppoL6VC1khjww1r0h4" target="_blank" rel="noopener">Certificate <svg class="icon icon--sm" aria-hidden="true"><use href="#i-ext"/></svg></a>
+          </li>
+          <li class="course glass reveal" style="--d:120ms">
+            <time>Jul 2024</time>
+            <h3>Excel: Basic to Intermediate</h3>
+            <p>Online certification</p>
+            <a class="chip-link" href="https://www.linkedin.com/in/alberto-rivas-casal-158316327/overlay/Certifications/1362265509/treasury/?profileId=ACoAAFJzTlQBdUCXcsDe7ppoL6VC1khjww1r0h4" target="_blank" rel="noopener">Certificate <svg class="icon icon--sm" aria-hidden="true"><use href="#i-ext"/></svg></a>
+          </li>
+          <li class="course glass reveal" style="--d:180ms">
+            <time>Dec 2023</time>
+            <h3>Networking Basics</h3>
+            <p>Cisco Networking Academy</p>
+            <a class="chip-link" href="https://www.credly.com/badges/1f981607-f6d4-440d-8632-c19a0839e84e/public_url" target="_blank" rel="noopener">Certificate <svg class="icon icon--sm" aria-hidden="true"><use href="#i-ext"/></svg></a>
+          </li>
+        </ul>
       </div>
     </section>
 
-    <!-- ===== Experience timeline ===== -->
-    <section id="experience" class="py-24">
-      <div class="mx-auto max-w-4xl px-4 sm:px-6">
-        <div class="reveal max-w-2xl">
-          <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white">Experience & learning</h2>
-          <p class="mt-3 text-slate-400">Career and education milestones. Expand any entry for details.</p>
-        </div>
-        <ol id="timeline-list" class="timeline mt-12 grid gap-6"></ol>
-      </div>
-    </section>
-
-    <!-- ===== Contact ===== -->
-    <section id="contact" class="py-24">
-      <div class="mx-auto max-w-6xl px-4 sm:px-6 grid lg:grid-cols-2 gap-10 items-start">
+    <!-- Contact -->
+    <section class="section" id="contact" aria-labelledby="contact-title">
+      <div class="container contact">
         <div class="reveal">
-          <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white">Let's work together</h2>
-          <p class="mt-3 max-w-lg text-slate-400">Hiring for a data or AI role, or have a problem worth solving with data? Reach out directly or copy any link below.</p>
-          <ul id="contact-links" class="mt-8 grid gap-3"></ul>
+          <h2 class="h2" id="contact-title">Let’s build something intelligent together</h2>
+          <p class="contact__lede">
+            A collaboration, an opportunity or a question: reach out directly, or copy any
+            link below.
+          </p>
+          <ul class="contact__links">
+            <li class="contact__item glass">
+              <svg class="icon" aria-hidden="true"><use href="#i-mail"/></svg>
+              <a href="mailto:albertorivasasal@gmail.com" data-copy-text="albertorivasasal@gmail.com">albertorivasasal@gmail.com</a>
+              <button class="icon-btn" type="button" data-copy="albertorivasasal@gmail.com" aria-label="Copy email address"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button>
+            </li>
+            <li class="contact__item glass">
+              <svg class="icon" aria-hidden="true"><use href="#i-linkedin"/></svg>
+              <a href="https://www.linkedin.com/in/alberto-rivas-casal-158316327/" target="_blank" rel="noopener">LinkedIn</a>
+              <button class="icon-btn" type="button" data-copy="https://www.linkedin.com/in/alberto-rivas-casal-158316327/" aria-label="Copy LinkedIn link"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button>
+            </li>
+            <li class="contact__item glass">
+              <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>
+              <a href="https://github.com/UO295831" target="_blank" rel="noopener">GitHub</a>
+              <button class="icon-btn" type="button" data-copy="https://github.com/UO295831" aria-label="Copy GitHub link"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button>
+            </li>
+          </ul>
         </div>
 
-        <form id="contact-form" class="glass reveal p-6 sm:p-8" novalidate>
-          <h3 class="text-xl font-semibold text-white">Send a message</h3>
-          <p class="mt-1 text-sm text-slate-400">This opens your email app with the message ready. Nothing is stored on this site.</p>
-          <div class="mt-6 grid gap-x-4 gap-y-2 sm:grid-cols-2">
-            <div>
-              <label for="cf-name" class="field-label">Name</label>
-              <input id="cf-name" name="name" class="field" autocomplete="name" maxlength="80" aria-describedby="error-name" />
-              <p id="error-name" class="field-error"></p>
+        <form class="form glass reveal" id="contact-form" style="--d:100ms" novalidate>
+          <h3>Send a message</h3>
+          <p class="form__hint">This opens your email app with the message ready. Nothing is stored on this site.</p>
+          <div class="form__grid">
+            <div class="field">
+              <label for="cf-name">Name</label>
+              <input id="cf-name" name="name" autocomplete="name" maxlength="80" placeholder="Ada Lovelace…" aria-describedby="e-name" />
+              <p class="field__error" id="e-name"></p>
             </div>
-            <div>
-              <label for="cf-email" class="field-label">Email</label>
-              <input id="cf-email" name="email" type="email" class="field" autocomplete="email" maxlength="120" aria-describedby="error-email" />
-              <p id="error-email" class="field-error"></p>
+            <div class="field">
+              <label for="cf-email">Email</label>
+              <input id="cf-email" name="email" type="email" inputmode="email" autocomplete="email" spellcheck="false" maxlength="120" placeholder="ada@example.com" aria-describedby="e-email" />
+              <p class="field__error" id="e-email"></p>
             </div>
-            <div class="sm:col-span-2">
-              <label for="cf-message" class="field-label">Message</label>
-              <textarea id="cf-message" name="message" rows="5" class="field resize-y" maxlength="2000" aria-describedby="error-message"></textarea>
-              <p id="error-message" class="field-error"></p>
+            <div class="field field--full">
+              <label for="cf-message">Message</label>
+              <textarea id="cf-message" name="message" rows="5" maxlength="2000" placeholder="Tell me about the role or the problem…" aria-describedby="e-message"></textarea>
+              <p class="field__error" id="e-message"></p>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary mt-4 w-full sm:w-auto"><span data-icon="send" data-icon-class="w-4 h-4"></span>Send message</button>
-          <p id="form-status" class="mt-4 text-sm" role="status" aria-live="polite"></p>
+          <button class="btn btn--primary" type="submit">Send message</button>
+          <p class="form__status" id="form-status" role="status" aria-live="polite"></p>
         </form>
       </div>
     </section>
   </main>
 
-  <footer class="relative z-10 border-t border-white/5 pt-10 pb-28 sm:pb-10">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-      <p>© <span id="current-year"></span> <span data-bind="fullName"></span>. Built with vanilla JS and Tailwind CSS.</p>
-      <a href="#hero" class="font-mono hover:text-cyan-300 transition">back to top ↑</a>
+  <footer class="footer">
+    <div class="container footer__row">
+      <p>© <span id="year">2026</span> <span translate="no">Alberto Rivas</span>. Built with plain HTML, CSS and JavaScript.</p>
+      <a href="#hero">Back to top</a>
     </div>
   </footer>
 
-  <!-- ===== AI assistant widget ===== -->
-  <button id="chat-launcher" type="button" class="chat-launcher" aria-expanded="false" aria-controls="chat-panel">
-    <span data-icon="sparkles" data-icon-class="w-5 h-5"></span>
-    <span class="hidden sm:inline">Ask AI about <span data-bind="firstName"></span></span>
-    <span class="sm:hidden sr-only">Open portfolio assistant</span>
-  </button>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <section id="chat-panel" class="chat-panel glass" role="dialog" aria-modal="false" aria-labelledby="chat-title" aria-hidden="true">
-    <header class="flex items-center gap-3 border-b border-white/10 px-4 py-3">
-      <span class="grid place-items-center w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-400 text-slate-950"><span data-icon="sparkles" data-icon-class="w-4 h-4"></span></span>
-      <div class="min-w-0 flex-1">
-        <h2 id="chat-title" class="text-sm font-semibold text-white">Portfolio assistant</h2>
-        <p class="font-mono text-[0.68rem] text-slate-500">simulated, runs in your browser</p>
-      </div>
-      <button id="chat-close" type="button" class="grid place-items-center w-9 h-9 rounded-xl text-slate-400 hover:text-white hover:bg-white/5" aria-label="Close assistant"><span data-icon="x" data-icon-class="w-5 h-5"></span></button>
-    </header>
-    <div id="chat-messages" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3" aria-live="polite"></div>
-    <div id="chat-chips" class="flex gap-2 overflow-x-auto no-scrollbar px-4 pb-3"></div>
-    <form id="chat-form" class="flex gap-2 border-t border-white/10 p-3">
-      <label for="chat-input" class="sr-only">Ask a question</label>
-      <input id="chat-input" class="field !py-2.5" placeholder="Ask about skills, projects…" maxlength="280" autocomplete="off" />
-      <button type="submit" class="btn btn-primary !px-3.5" aria-label="Send question"><span data-icon="send" data-icon-class="w-4 h-4"></span></button>
-    </form>
-  </section>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <script>
-  (() => {
-    'use strict';
-
-    /* =========================================================
-     * 1. CONTENT CONFIG — single source of truth for all content.
-     *    ✏️ Items marked EDIT are illustrative: replace them with your
-     *    real projects, figures and dates before publishing.
-     * ========================================================= */
-    const PORTFOLIO_CONFIG = deepFreeze({
-      profile: {
-        name: 'Alberto Rivas',
-        firstName: 'Alberto',
-        fullName: 'Alberto Rivas Casal',
-        initials: 'AR',
-        handle: '@AlbertotheAnalyst',
-        availability: 'Open to Data & AI opportunities',
-        tagline: 'Data Analyst skilled in SQL, Tableau and Python, expanding into machine learning and generative AI. I build reliable data pipelines, decision-ready dashboards and models that answer real business questions.',
-        roles: ['Data Analyst', 'Data Scientist', 'Machine Learning Engineer', 'BI & Tableau Developer', 'GenAI Builder'],
-        bio: [
-          'I care about the full journey of data: from messy sources and SQL modelling to clear visual stories and predictive models people actually use.',
-          'My core is analytics with SQL, Tableau and Python, and I am actively extending it into machine learning, LLM-powered applications and MLOps practices.',
-        ],
-        focus: ['SQL', 'Tableau', 'Python', 'ML', 'GenAI'],
-        exploring: ['RAG systems', 'LLM evaluation', 'MLOps on Kubernetes'],
-        cvUrl: '', // EDIT: link to your CV PDF. Empty = button hidden.
-      },
-
-      links: {
-        email: 'albertorivascasal@gmail.com',
-        linkedin: 'https://www.linkedin.com/in/alberto-rivas-casal-158316327/',
-        github: '',      // EDIT: e.g. https://github.com/<user>. Empty = hidden.
-        huggingface: '', // EDIT: e.g. https://huggingface.co/<user>
-        kaggle: '',      // EDIT: e.g. https://www.kaggle.com/<user>
-        instagram: 'https://www.instagram.com/albertorivascasal/',
-      },
-
-      terminal: [ // EDIT: hero terminal lines
-        { kind: 'prompt', text: 'python pipeline.py --run weekly-sales' },
-        { kind: 'ok', text: '✓ extracted 1.2M rows from PostgreSQL' },
-        { kind: 'ok', text: '✓ schema validated, 0 nulls in keys' },
-        { kind: 'info', text: '→ training churn model (XGBoost)…' },
-        { kind: 'metric', text: '  ROC-AUC 0.91   F1 0.87' },
-        { kind: 'ok', text: '✓ Tableau dashboard refreshed' },
-        { kind: 'prompt', text: '' },
-      ],
-
-      stats: [ // EDIT: your real figures
-        { value: 12, suffix: '+', label: 'Data projects delivered' },
-        { value: 25, suffix: '+', label: 'Dashboards built' },
-        { value: 5, suffix: 'M+', label: 'Rows modelled in SQL' },
-        { value: 0.91, decimals: 2, suffix: '', label: 'Best model ROC-AUC' },
-      ],
-
-      skills: [ // EDIT: levels are self-assessed
-        { id: 'analytics', domain: 'Analytics & BI', icon: 'chart', level: 90, description: 'KPI design, dashboards and statistical analysis that leadership can act on.', tools: ['Tableau', 'Power BI', 'Excel', 'Statistics', 'A/B Testing'] },
-        { id: 'data', domain: 'Data Engineering & SQL', icon: 'database', level: 88, description: 'Modelling, transformations and scheduled pipelines over relational and cloud warehouses.', tools: ['SQL', 'PostgreSQL', 'dbt', 'Airflow', 'Spark', 'BigQuery'] },
-        { id: 'ml', domain: 'Python & Machine Learning', icon: 'cpu', level: 78, description: 'Feature engineering, classical ML and honest evaluation on tabular data.', tools: ['Python', 'Pandas', 'NumPy', 'scikit-learn', 'XGBoost'] },
-        { id: 'llm', domain: 'NLP & LLMs', icon: 'message', level: 70, description: 'Retrieval-augmented generation, prompt design and LLM evaluation.', tools: ['LangChain', 'RAG', 'Vector DBs', 'OpenAI API', 'Hugging Face'] },
-        { id: 'dl', domain: 'Deep Learning', icon: 'layers', level: 62, description: 'Neural networks for vision and text, from fine-tuning to inference.', tools: ['PyTorch', 'TensorFlow', 'Keras', 'OpenCV'] },
-        { id: 'mlops', domain: 'MLOps & Cloud', icon: 'server', level: 60, description: 'Packaging, tracking and serving models so they keep working after the demo.', tools: ['Docker', 'Kubernetes', 'MLflow', 'FastAPI', 'GitHub Actions'] },
-      ],
-
-      projectCategories: [
-        { id: 'all', label: 'All' },
-        { id: 'genai', label: 'GenAI / LLMs' },
-        { id: 'cv', label: 'Computer Vision' },
-        { id: 'mlops', label: 'MLOps & Data Eng' },
-        { id: 'analytics', label: 'Analytics & BI' },
-      ],
-
-      projects: [ // EDIT: replace with your real projects, metrics and URLs
-        { id: 'documind', category: 'genai', featured: true, title: 'DocuMind: RAG assistant for internal docs', summary: 'Question-answering over company documentation with retrieval, citations and an automated evaluation set.', tags: ['LangChain', 'RAG', 'Vector DBs', 'OpenAI API', 'FastAPI'], metrics: [{ value: '87%', label: 'answer accuracy on eval set' }, { value: '−60%', label: 'time spent searching docs' }], demoUrl: '', repoUrl: '' },
-        { id: 'ticket-classifier', category: 'genai', featured: false, title: 'Support ticket classifier', summary: 'Fine-tuned transformer that routes incoming tickets to the right team with a confidence threshold for human review.', tags: ['Hugging Face', 'PyTorch', 'FastAPI', 'Docker'], metrics: [{ value: '0.94', label: 'macro F1-score' }, { value: '−70%', label: 'manual triage effort' }], demoUrl: '', repoUrl: '' },
-        { id: 'shelf-vision', category: 'cv', featured: true, title: 'Retail shelf vision', summary: 'Object detection model that spots out-of-stock products from shelf photos and flags them for restocking.', tags: ['PyTorch', 'OpenCV', 'Docker'], metrics: [{ value: '92%', label: 'mAP@50 on product detection' }, { value: '18 FPS', label: 'on edge hardware' }], demoUrl: '', repoUrl: '' },
-        { id: 'churn-pipeline', category: 'mlops', featured: false, title: 'Churn prediction pipeline', summary: 'End-to-end retraining pipeline with experiment tracking, versioned models and scheduled batch scoring.', tags: ['Python', 'scikit-learn', 'XGBoost', 'MLflow', 'Airflow'], metrics: [{ value: '0.91', label: 'ROC-AUC' }, { value: '−45%', label: 'retraining time' }], demoUrl: '', repoUrl: '' },
-        { id: 'lakehouse', category: 'mlops', featured: false, title: 'Analytics lakehouse', summary: 'Incremental ELT with tested dbt models feeding a single trusted layer for BI and data science.', tags: ['Spark', 'dbt', 'Airflow', 'BigQuery', 'SQL'], metrics: [{ value: '5M+', label: 'rows processed per day' }, { value: '99.5%', label: 'pipeline uptime' }], demoUrl: '', repoUrl: '' },
-        { id: 'sales-center', category: 'analytics', featured: true, title: 'Sales performance command center', summary: 'Interactive Tableau suite replacing weekly spreadsheet reports, built on a clean SQL semantic layer.', tags: ['Tableau', 'SQL', 'PostgreSQL'], metrics: [{ value: '12', label: 'KPIs in a single view' }, { value: '−8 h', label: 'manual reporting per week' }], demoUrl: '', repoUrl: '' },
-        { id: 'segmentation', category: 'analytics', featured: false, title: 'Customer segmentation', summary: 'Clustering of purchase behaviour into segments marketing could target, with a dashboard to track them.', tags: ['Python', 'Pandas', 'scikit-learn', 'Tableau', 'Statistics'], metrics: [{ value: '5', label: 'actionable segments' }, { value: '+14%', label: 'campaign CTR uplift' }], demoUrl: '', repoUrl: '' },
-      ],
-
-      timeline: [ // EDIT: your real roles, studies and dates
-        { period: '2025 – Present', type: 'work', title: 'Data Analyst', organization: 'Independent & freelance projects', description: 'End-to-end analytics projects: sourcing and modelling data in SQL, building Tableau dashboards and adding predictive models where they create value.', highlights: ['Delivered dashboards used in weekly business reviews', 'Automated recurring reports with Python and SQL'] },
-        { period: '2024 – 2025', type: 'certification', title: 'Machine Learning & Generative AI', organization: 'Self-directed specialization', description: 'Structured learning path through classical ML, deep learning and LLM application development, each module closed with a portfolio project.', highlights: ['Built RAG and fine-tuning projects', 'Practised MLOps with Docker and MLflow'] },
-        { period: '2023 – 2024', type: 'education', title: 'Data Analytics Program', organization: 'SQL, Tableau and Python', description: 'Foundations in data cleaning, relational modelling, statistics and visual storytelling.', highlights: ['Capstone: sales performance dashboard', 'Advanced SQL: window functions and CTEs'] },
-      ],
-
-      chat: {
-        greeting: "Hi! I'm a portfolio assistant. Ask me about Alberto's skills, projects, experience or how to reach him.",
-        quickPrompts: [
-          { label: 'Experience with LLMs?', intent: 'llm' },
-          { label: 'Show top projects', intent: 'projects' },
-          { label: 'Core tech stack', intent: 'skills' },
-          { label: 'Career path', intent: 'experience' },
-          { label: 'Contact info', intent: 'contact' },
-        ],
-        intents: { // order matters: first match wins
-          llm: ['llm', 'gpt', 'genai', 'generative', 'rag', 'langchain', 'nlp', 'language model'],
-          contact: ['contact', 'email', 'hire', 'reach', 'linkedin', 'call', 'message'],
-          projects: ['project', 'portfolio', 'built', 'demo', 'case'],
-          experience: ['experience', 'career', 'job', 'background', 'education', 'study', 'work'],
-          skills: ['skill', 'stack', 'tool', 'python', 'sql', 'tableau', 'tech', 'know'],
-        },
-      },
-    });
-
-    /* =========================================================
-     * 2. UI CONFIG — timings and limits (no magic numbers below)
-     * ========================================================= */
-    const UI_CONFIG = Object.freeze({
-      debug: false,
-      ticker: { typeMs: 65, deleteMs: 32, holdMs: 1700, gapMs: 350 },
-      terminalLineDelayMs: 380,
-      counterDurationMs: 1600,
-      revealThreshold: 0.15,
-      particles: { areaPerParticle: 14000, minParticles: 28, maxParticles: 95, linkDistance: 135, mouseRadius: 170, speed: 0.28, maxDpr: 2, colors: ['34,211,238', '167,139,250'] },
-      chat: { typingDelayMs: 700, maxInputLength: 280, mobileBreakpoint: '(max-width: 640px)' },
-      form: { minNameLength: 2, minMessageLength: 10, maxMessageLength: 2000 },
-      copiedFeedbackMs: 1600,
-      toastDurationMs: 2200,
-      resizeDebounceMs: 200,
-    });
-
-    const NAV_ITEMS = Object.freeze([
-      { id: 'about', label: 'About' },
-      { id: 'projects', label: 'Projects' },
-      { id: 'experience', label: 'Experience' },
-      { id: 'contact', label: 'Contact' },
-    ]);
-
-    const TIMELINE_TYPE_LABELS = Object.freeze({ work: 'Work', education: 'Education', certification: 'Certification' });
-    const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-    /* =========================================================
-     * 3. CORE UTILITIES (pure, small, specific)
-     * ========================================================= */
-    const ICONS = Object.freeze({
-      sparkles: '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>',
-      mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
-      download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
-      send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
-      x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-      menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
-      copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
-      check: '<path d="M20 6 9 17l-5-5"/>',
-      external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
-      chevron: '<path d="m6 9 6 6 6-6"/>',
-      chart: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
-      database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
-      cpu: '<rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/>',
-      message: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
-      layers: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
-      server: '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/>',
-      github: '<path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/>',
-      linkedin: '<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/>',
-      huggingface: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/>',
-      kaggle: '<path d="M7 3v18M17 3l-8 9 8 9"/>',
-      instagram: '<rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><path d="M17.5 6.5h.01"/>',
-    });
-
-    const $ = (selector, root = document) => root.querySelector(selector);
-    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
-    const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const scrollBehavior = () => (prefersReducedMotion() ? 'auto' : 'smooth');
-
-    function deepFreeze(target) {
-      Object.values(target).forEach((value) => { if (value && typeof value === 'object') deepFreeze(value); });
-      return Object.freeze(target);
-    }
-
-    function escapeHtml(value) {
-      const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-      return String(value ?? '').replace(/[&<>"']/g, (char) => entities[char]);
-    }
-
-    function icon(name, className = 'w-5 h-5') {
-      const paths = ICONS[name];
-      if (!paths) return '';
-      return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
-    }
-
-    function debounce(fn, waitMs) {
-      let timerId;
-      return (...args) => { clearTimeout(timerId); timerId = setTimeout(() => fn(...args), waitMs); };
-    }
-
-    function stripProtocol(url) {
-      return url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
-    }
-
-    function formatNumber(value, decimals) {
-      return value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-    }
-
-    const logger = {
-      info(module, operation, details = {}) {
-        if (UI_CONFIG.debug) console.info(`[${module}] operation=${operation} result=SUCCESS`, details);
-      },
-      error(module, operation, error, details = {}) {
-        console.error(`[${module}] operation=${operation} result=ERROR`, { ...details, message: error?.message, error });
-      },
-    };
-
-    function initModule(name, initFn) {
-      const startedAt = performance.now();
-      try {
-        const result = initFn();
-        logger.info(name, 'init', { durationMs: Math.round(performance.now() - startedAt) });
-        return result;
-      } catch (error) {
-        logger.error(name, 'init', error);
-        return null;
-      }
-    }
-
-    /* =========================================================
-     * 4. STATIC RENDERERS (config → DOM)
-     * ========================================================= */
-    function renderStaticIcons() {
-      $$('[data-icon]').forEach((el) => { el.innerHTML = icon(el.dataset.icon, el.dataset.iconClass); el.classList.add('inline-flex'); });
-    }
-
-    function bindProfile(profile) {
-      $$('[data-bind]').forEach((el) => {
-        const value = profile[el.dataset.bind];
-        if (typeof value === 'string') el.textContent = value;
-      });
-      const cvLink = $('#cv-link');
-      if (profile.cvUrl) { cvLink.href = profile.cvUrl; cvLink.hidden = false; }
-      $('#role-ticker-sr').textContent = `Roles: ${profile.roles.join(', ')}`;
-      $('#current-year').textContent = String(new Date().getFullYear());
-    }
-
-    function renderNavigation(items) {
-      const html = items.map((item) => `<li><a href="#${item.id}" class="nav-link" data-nav="${item.id}">${escapeHtml(item.label)}</a></li>`).join('');
-      $('#nav-links').innerHTML = html;
-      $('#mobile-nav-links').innerHTML = html;
-    }
-
-    function renderTerminal(lines) {
-      const toneClass = { prompt: 'text-slate-200', ok: 'text-emerald-300', info: 'text-cyan-300', metric: 'text-violet-300' };
-      $('#hero-terminal').innerHTML = lines.map((line, index) => {
-        const delay = `--delay:${600 + index * UI_CONFIG.terminalLineDelayMs}ms`;
-        const isLast = index === lines.length - 1;
-        const prefix = line.kind === 'prompt' ? '<span class="text-violet-300">$</span> ' : '';
-        const cursor = isLast ? '<span class="ticker-cursor"></span>' : '';
-        return `<div class="term-line ${toneClass[line.kind] ?? 'text-slate-300'}" style="${delay}">${prefix}${escapeHtml(line.text)}${cursor}</div>`;
-      }).join('');
-    }
-
-    function renderStats(stats) {
-      $('#stats-grid').innerHTML = stats.map((stat) => `
-        <div class="glass card-hover p-4 sm:p-5">
-          <dt class="text-xs sm:text-sm text-slate-400">${escapeHtml(stat.label)}</dt>
-          <dd class="mt-1 font-mono text-2xl sm:text-3xl font-bold text-white">
-            <span data-counter="${Number(stat.value)}" data-decimals="${stat.decimals ?? 0}">0</span><span class="text-cyan-300">${escapeHtml(stat.suffix ?? '')}</span>
-          </dd>
-        </div>`).join('');
-    }
-
-    function renderProfileSnippet(profile) {
-      const stack = profile.focus.map((item) => `<span class="tok-s">"${escapeHtml(item)}"</span>`).join(', ');
-      return `<span class="tok-k">const</span> <span class="tok-v">me</span> = {\n  role: <span class="tok-s">"${escapeHtml(profile.roles[0])}"</span>,\n  stack: [${stack}],\n  openToWork: <span class="tok-b">true</span>,\n};`;
-    }
-
-    function renderAboutCard(profile) {
-      $('#about-card').innerHTML = `
-        <div class="flex items-center gap-4">
-          <span class="grid place-items-center w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 to-violet-500 text-slate-950 text-lg font-extrabold">${escapeHtml(profile.initials)}</span>
-          <div>
-            <p class="font-semibold text-white">${escapeHtml(profile.fullName)}</p>
-            <p class="font-mono text-xs text-cyan-300">${escapeHtml(profile.handle)}</p>
-          </div>
-        </div>
-        ${profile.bio.map((paragraph) => `<p class="mt-5 text-sm text-slate-300 leading-relaxed">${escapeHtml(paragraph)}</p>`).join('')}
-        <pre class="code-snippet mt-6 whitespace-pre-wrap rounded-xl border border-white/10 bg-slate-950/60 p-4 font-mono text-[0.78rem] leading-6 text-slate-300">${renderProfileSnippet(profile)}</pre>
-        <p class="mt-6 text-sm font-medium text-white">Currently exploring</p>
-        <div class="mt-3 flex flex-wrap gap-2">${profile.exploring.map((topic) => `<span class="badge !border-violet-400/30 !text-violet-200">${escapeHtml(topic)}</span>`).join('')}</div>`;
-    }
-
-    function renderSkills(skills) {
-      $('#skills-grid').innerHTML = skills.map((skill, index) => `
-        <article class="glass card-hover reveal p-6" style="--delay:${index * 70}ms">
-          <div class="flex items-start justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <span class="grid place-items-center w-11 h-11 shrink-0 rounded-xl border border-white/10 bg-gradient-to-br from-cyan-400/20 to-violet-400/20 text-cyan-300">${icon(skill.icon)}</span>
-              <h3 class="font-semibold text-white leading-snug">${escapeHtml(skill.domain)}</h3>
-            </div>
-            <span class="font-mono text-sm text-cyan-300">${skill.level}%</span>
-          </div>
-          <div class="skill-bar mt-5" role="progressbar" aria-valuenow="${skill.level}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(skill.domain)} proficiency"><span style="--level:${skill.level / 100}"></span></div>
-          <p class="mt-4 text-sm text-slate-400 leading-relaxed">${escapeHtml(skill.description)}</p>
-          <div class="mt-4 flex flex-wrap gap-2">${skill.tools.map((tool) => `<button type="button" class="badge" data-tool="${escapeHtml(tool)}" title="Show projects using ${escapeHtml(tool)}">${escapeHtml(tool)}</button>`).join('')}</div>
-        </article>`).join('');
-    }
-
-    function renderProjectLinks(project) {
-      const linkAttrs = 'target="_blank" rel="noopener noreferrer"';
-      const links = [
-        project.demoUrl && `<a href="${escapeHtml(project.demoUrl)}" ${linkAttrs} class="btn btn-primary !py-2 !px-3 text-sm">${icon('external', 'w-4 h-4')}Live demo</a>`,
-        project.repoUrl && `<a href="${escapeHtml(project.repoUrl)}" ${linkAttrs} class="btn btn-ghost !py-2 !px-3 text-sm">${icon('github', 'w-4 h-4')}Source code</a>`,
-      ].filter(Boolean);
-      return links.length ? `<div class="mt-5 flex flex-wrap gap-2">${links.join('')}</div>` : '';
-    }
-
-    function renderProjectCard(project, categoryLabel) {
-      const featuredBadge = project.featured ? '<span class="badge !border-violet-400/40 !text-violet-200">★ Featured</span>' : '';
-      return `
-        <article class="project-card glass card-hover p-6 flex flex-col ${project.featured ? 'featured-ring' : ''}">
-          <div class="flex items-center justify-between gap-3">
-            <span class="font-mono text-xs text-cyan-300">${escapeHtml(categoryLabel)}</span>${featuredBadge}
-          </div>
-          <h3 class="mt-3 text-lg font-semibold text-white leading-snug">${escapeHtml(project.title)}</h3>
-          <p class="mt-2 flex-1 text-sm text-slate-400 leading-relaxed">${escapeHtml(project.summary)}</p>
-          <div class="mt-5 grid grid-cols-2 gap-2">${project.metrics.map((metric) => `
-            <div class="metric"><div class="font-mono text-lg font-bold text-gradient">${escapeHtml(metric.value)}</div><div class="text-[0.72rem] text-slate-400 leading-tight">${escapeHtml(metric.label)}</div></div>`).join('')}
-          </div>
-          <div class="mt-4 flex flex-wrap gap-1.5">${project.tags.map((tag) => `<span class="badge">${escapeHtml(tag)}</span>`).join('')}</div>
-          ${renderProjectLinks(project)}
-        </article>`;
-    }
-
-    function renderTimeline(items) {
-      $('#timeline-list').innerHTML = items.map((item, index) => {
-        const detailsId = `timeline-details-${index}`;
-        const isOpen = index === 0;
-        return `
-          <li class="timeline-item reveal relative pl-10 ${isOpen ? 'is-open' : ''}" style="--delay:${index * 80}ms">
-            <span class="timeline-dot" aria-hidden="true"></span>
-            <div class="glass card-hover p-5 sm:p-6">
-              <button type="button" class="w-full text-left flex items-start justify-between gap-4" aria-expanded="${isOpen}" aria-controls="${detailsId}">
-                <span class="block">
-                  <span class="flex flex-wrap items-center gap-2"><span class="font-mono text-xs text-cyan-300">${escapeHtml(item.period)}</span><span class="badge !text-[0.65rem]">${escapeHtml(TIMELINE_TYPE_LABELS[item.type] ?? item.type)}</span></span>
-                  <span class="mt-2 block text-lg font-semibold text-white">${escapeHtml(item.title)}</span>
-                  <span class="block text-sm text-slate-400">${escapeHtml(item.organization)}</span>
-                </span>
-                <span class="chevron mt-1 text-slate-400">${icon('chevron')}</span>
-              </button>
-              <div id="${detailsId}" class="timeline-details"><div>
-                <p class="pt-4 text-sm text-slate-300 leading-relaxed">${escapeHtml(item.description)}</p>
-                <ul class="mt-3 grid gap-1.5">${item.highlights.map((highlight) => `<li class="flex gap-2 text-sm text-slate-400"><span class="text-cyan-300" aria-hidden="true">▹</span>${escapeHtml(highlight)}</li>`).join('')}</ul>
-              </div></div>
-            </div>
-          </li>`;
-      }).join('');
-    }
-
-    const CONTACT_CHANNELS = Object.freeze([
-      { key: 'email', label: 'Email', icon: 'mail', toHref: (value) => `mailto:${value}`, toDisplay: (value) => value },
-      { key: 'linkedin', label: 'LinkedIn', icon: 'linkedin', toHref: (value) => value, toDisplay: stripProtocol },
-      { key: 'github', label: 'GitHub', icon: 'github', toHref: (value) => value, toDisplay: stripProtocol },
-      { key: 'huggingface', label: 'Hugging Face', icon: 'huggingface', toHref: (value) => value, toDisplay: stripProtocol },
-      { key: 'kaggle', label: 'Kaggle', icon: 'kaggle', toHref: (value) => value, toDisplay: stripProtocol },
-      { key: 'instagram', label: 'Instagram', icon: 'instagram', toHref: (value) => value, toDisplay: stripProtocol },
-    ]);
-
-    function renderContactLinks(links) {
-      $('#contact-links').innerHTML = CONTACT_CHANNELS.filter((channel) => links[channel.key]).map((channel) => {
-        const value = links[channel.key];
-        const externalAttrs = channel.key === 'email' ? '' : 'target="_blank" rel="noopener noreferrer"';
-        return `
-          <li class="glass card-hover flex items-center gap-3 p-3 sm:p-4">
-            <span class="grid place-items-center w-10 h-10 shrink-0 rounded-xl border border-white/10 bg-white/5 text-cyan-300">${icon(channel.icon)}</span>
-            <a href="${escapeHtml(channel.toHref(value))}" ${externalAttrs} class="group min-w-0 flex-1">
-              <span class="block text-sm font-medium text-white transition group-hover:text-cyan-300">${escapeHtml(channel.label)}</span>
-              <span class="block truncate font-mono text-xs text-slate-400">${escapeHtml(channel.toDisplay(value))}</span>
-            </a>
-            <button type="button" class="copy-btn" data-copy="${escapeHtml(value)}" aria-label="Copy ${escapeHtml(channel.label)}">${icon('copy', 'w-4 h-4')}</button>
-          </li>`;
-      }).join('');
-    }
-
-    /* =========================================================
-     * 5. BEHAVIOURS
-     * ========================================================= */
-    function initNavigation(items) {
-      const toggle = $('#nav-toggle');
-      const menu = $('#mobile-menu');
-      const setMenuOpen = (open) => {
-        toggle.setAttribute('aria-expanded', String(open));
-        menu.classList.toggle('hidden', !open);
-        toggle.innerHTML = icon(open ? 'x' : 'menu', 'w-6 h-6');
-      };
-      toggle.addEventListener('click', () => setMenuOpen(toggle.getAttribute('aria-expanded') !== 'true'));
-      menu.addEventListener('click', (event) => { if (event.target.closest('a')) setMenuOpen(false); });
-      setMenuOpen(false);
-
-      const links = $$('[data-nav]');
-      const sectionObserver = new IntersectionObserver((entries) => {
-        entries.filter((entry) => entry.isIntersecting).forEach((entry) => {
-          links.forEach((link) => link.classList.toggle('is-active', link.dataset.nav === entry.target.id));
-        });
-      }, { rootMargin: '-45% 0px -50% 0px' });
-      items.forEach((item) => { const section = document.getElementById(item.id); if (section) sectionObserver.observe(section); });
-
-      const header = $('#site-header');
-      const updateHeader = () => header.classList.toggle('is-scrolled', window.scrollY > 24);
-      window.addEventListener('scroll', updateHeader, { passive: true });
-      updateHeader();
-    }
-
-    function initRoleTicker(roles) {
-      const el = $('#role-ticker');
-      if (!roles.length) return;
-      if (prefersReducedMotion()) { el.textContent = roles[0]; return; }
-      const { typeMs, deleteMs, holdMs, gapMs } = UI_CONFIG.ticker;
-      let roleIndex = 0;
-      let charIndex = 0;
-      let isDeleting = false;
-      const tick = () => {
-        const role = roles[roleIndex];
-        charIndex += isDeleting ? -1 : 1;
-        el.textContent = role.slice(0, charIndex);
-        if (!isDeleting && charIndex === role.length) { isDeleting = true; return setTimeout(tick, holdMs); }
-        if (isDeleting && charIndex === 0) { isDeleting = false; roleIndex = (roleIndex + 1) % roles.length; return setTimeout(tick, gapMs); }
-        return setTimeout(tick, isDeleting ? deleteMs : typeMs);
-      };
-      tick();
-    }
-
-    function animateCounter(el) {
-      const target = Number(el.dataset.counter);
-      const decimals = Number(el.dataset.decimals) || 0;
-      if (!Number.isFinite(target)) throw new Error(`Invalid counter value "${el.dataset.counter}"`);
-      if (prefersReducedMotion()) { el.textContent = formatNumber(target, decimals); return; }
-      const startedAt = performance.now();
-      const step = (now) => {
-        const progress = Math.min((now - startedAt) / UI_CONFIG.counterDurationMs, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        el.textContent = formatNumber(target * eased, decimals);
-        if (progress < 1) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-    }
-
-    function initCounters() {
-      const observer = new IntersectionObserver((entries, obs) => {
-        entries.filter((entry) => entry.isIntersecting).forEach((entry) => {
-          obs.unobserve(entry.target);
-          try { animateCounter(entry.target); } catch (error) { logger.error('Counters', 'animateCounter', error); }
-        });
-      }, { threshold: 0.6 });
-      $$('[data-counter]').forEach((el) => observer.observe(el));
-    }
-
-    function initRevealAnimations() {
-      const elements = $$('.reveal');
-      if (!('IntersectionObserver' in window)) { elements.forEach((el) => el.classList.add('is-visible')); return; }
-      const observer = new IntersectionObserver((entries, obs) => {
-        entries.filter((entry) => entry.isIntersecting).forEach((entry) => { entry.target.classList.add('is-visible'); obs.unobserve(entry.target); });
-      }, { threshold: UI_CONFIG.revealThreshold, rootMargin: '0px 0px -40px 0px' });
-      elements.forEach((el) => observer.observe(el));
-    }
-
-    function createProjectsController({ projects, categories }) {
-      const state = { category: 'all', tool: null };
-      const labels = Object.fromEntries(categories.map((category) => [category.id, category.label]));
-      const filtersEl = $('#project-filters');
-
-      const countFor = (categoryId) => (categoryId === 'all' ? projects.length : projects.filter((p) => p.category === categoryId).length);
-      const matches = (project) => (state.category === 'all' || project.category === state.category) && (!state.tool || project.tags.includes(state.tool));
-
-      function renderFilters() {
-        filtersEl.innerHTML = categories.map((category) => `
-          <button type="button" role="tab" class="filter-btn" data-category="${category.id}" aria-selected="${category.id === state.category}">
-            ${escapeHtml(category.label)}<span class="filter-count">${countFor(category.id)}</span>
-          </button>`).join('');
-      }
-
-      function renderGrid() {
-        const visible = projects.filter(matches);
-        $('#projects-grid').innerHTML = visible.map((project) => renderProjectCard(project, labels[project.category] ?? project.category)).join('');
-        $('#projects-empty').hidden = visible.length > 0;
-        $('#tool-filter').hidden = !state.tool;
-        $('#tool-filter-label').textContent = state.tool ?? '';
-      }
-
-      function setCategory(categoryId) {
-        if (!labels[categoryId]) { logger.error('Projects', 'setCategory', new Error(`Unknown category "${categoryId}"`)); return; }
-        Object.assign(state, { category: categoryId, tool: null });
-        renderFilters();
-        renderGrid();
-      }
-
-      function setTool(tool) {
-        Object.assign(state, { category: 'all', tool });
-        renderFilters();
-        renderGrid();
-      }
-
-      filtersEl.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-category]');
-        if (button) setCategory(button.dataset.category);
-      });
-      $('#tool-filter-clear').addEventListener('click', () => setTool(null));
-      renderFilters();
-      renderGrid();
-
-      return {
-        setCategory,
-        setTool,
-        scrollIntoView: () => $('#projects').scrollIntoView({ behavior: scrollBehavior() }),
-      };
-    }
-
-    function initSkillToolLinks(projectsController) {
-      if (!projectsController) throw new Error('Projects controller unavailable');
-      $('#skills-grid').addEventListener('click', (event) => {
-        const badge = event.target.closest('[data-tool]');
-        if (!badge) return;
-        projectsController.setTool(badge.dataset.tool);
-        projectsController.scrollIntoView();
-      });
-    }
-
-    function initTimelineToggle() {
-      $('#timeline-list').addEventListener('click', (event) => {
-        const button = event.target.closest('button[aria-expanded]');
-        if (!button) return;
-        const isOpen = button.closest('.timeline-item').classList.toggle('is-open');
-        button.setAttribute('aria-expanded', String(isOpen));
-      });
-    }
-
-    let toastTimerId;
-    function showToast(message, variant = 'success') {
-      const toast = $('#toast');
-      toast.textContent = message;
-      toast.dataset.variant = variant;
-      toast.classList.add('is-visible');
-      clearTimeout(toastTimerId);
-      toastTimerId = setTimeout(() => toast.classList.remove('is-visible'), UI_CONFIG.toastDurationMs);
-    }
-
-    async function copyTextToClipboard(text) {
-      if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return; }
-      const textarea = Object.assign(document.createElement('textarea'), { value: text });
-      textarea.setAttribute('readonly', '');
-      textarea.style.cssText = 'position:fixed;opacity:0;';
-      document.body.appendChild(textarea);
-      textarea.select();
-      const copied = document.execCommand('copy');
-      textarea.remove();
-      if (!copied) throw new Error('Clipboard fallback failed');
-    }
-
-    function markButtonCopied(button) {
-      if (!button.classList.contains('copy-btn') || button.classList.contains('is-copied')) return;
-      const originalHtml = button.innerHTML;
-      button.classList.add('is-copied');
-      button.innerHTML = icon('check', 'w-4 h-4');
-      setTimeout(() => { button.classList.remove('is-copied'); button.innerHTML = originalHtml; }, UI_CONFIG.copiedFeedbackMs);
-    }
-
-    function initCopyButtons() {
-      document.addEventListener('click', async (event) => {
-        const button = event.target.closest('[data-copy]');
-        if (!button) return;
-        try {
-          await copyTextToClipboard(button.dataset.copy);
-          markButtonCopied(button);
-          showToast('Copied to clipboard');
-          logger.info('Clipboard', 'copy');
-        } catch (error) {
-          logger.error('Clipboard', 'copy', error);
-          showToast('Copy failed. Select the text and copy it manually.', 'error');
-        }
-      });
-    }
-
-    function validateContactForm({ name, email, message }) {
-      const { minNameLength, minMessageLength, maxMessageLength } = UI_CONFIG.form;
-      const errors = {};
-      if (name.length < minNameLength) errors.name = 'Enter your name.';
-      if (!EMAIL_PATTERN.test(email)) errors.email = 'Enter a valid email address.';
-      if (message.length < minMessageLength) errors.message = `Write at least ${minMessageLength} characters.`;
-      else if (message.length > maxMessageLength) errors.message = `Keep it under ${maxMessageLength} characters.`;
-      return errors;
-    }
-
-    function buildMailtoUrl(recipient, { name, email, message }) {
-      const subject = `Portfolio contact from ${name}`;
-      const body = `${message}\n\n${name} (${email})`;
-      return `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    }
-
-    function applyFieldErrors(form, errors) {
-      ['name', 'email', 'message'].forEach((field) => {
-        form.elements[field].setAttribute('aria-invalid', String(Boolean(errors[field])));
-        $(`#error-${field}`).textContent = errors[field] ?? '';
-      });
-    }
-
-    function initContactForm(recipient) {
-      const form = $('#contact-form');
-      const status = $('#form-status');
-      form.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const values = {
-          name: form.elements.name.value.trim(),
-          email: form.elements.email.value.trim(),
-          message: form.elements.message.value.trim(),
-        };
-        const errors = validateContactForm(values);
-        applyFieldErrors(form, errors);
-        if (Object.keys(errors).length) {
-          Object.assign(status, { textContent: 'Fix the highlighted fields to send your message.' });
-          status.dataset.state = 'error';
-          return;
-        }
-        window.location.href = buildMailtoUrl(recipient, values);
-        status.textContent = 'Your email app is opening with the message ready. If nothing opens, copy the email address on the left.';
-        status.dataset.state = 'success';
-        logger.info('ContactForm', 'submit', { channel: 'mailto' });
-      });
-    }
-
-    /* =========================================================
-     * 6. AI ASSISTANT (simulated; answers built from config)
-     * ========================================================= */
-    function detectChatIntent(text, intents) {
-      const normalized = text.toLowerCase();
-      const match = Object.entries(intents).find(([, keywords]) => keywords.some((keyword) => normalized.includes(keyword)));
-      return match ? match[0] : 'fallback';
-    }
-
-    function createChatReplyBuilder(config) {
-      const { profile, skills, projects, timeline, links } = config;
-      const name = escapeHtml(profile.firstName);
-      const list = (items) => `<ul class="chat-list">${items.join('')}</ul>`;
-      const projectItem = (p) => `<li><strong>${escapeHtml(p.title)}</strong>: ${escapeHtml(p.metrics[0]?.value)} ${escapeHtml(p.metrics[0]?.label)}</li>`;
-
-      const builders = {
-        llm: () => {
-          const tools = skills.find((s) => s.id === 'llm')?.tools ?? [];
-          return {
-            html: `<p>${name} builds practical LLM apps with <strong>${escapeHtml(tools.join(', '))}</strong>, with a focus on RAG and evaluation.</p>${list(projects.filter((p) => p.category === 'genai').map(projectItem))}`,
-            actions: [{ label: 'Open GenAI projects', action: 'filter:genai' }],
-          };
-        },
-        projects: () => ({
-          html: `<p>Top projects, measured by outcome:</p>${list(projects.filter((p) => p.featured).map(projectItem))}`,
-          actions: [{ label: 'See all projects', action: 'filter:all' }],
-        }),
-        skills: () => ({
-          html: `<p>${name}'s strongest areas:</p>${list(skills.map((s) => `<li><strong>${escapeHtml(s.domain)}</strong> (${s.level}%): ${escapeHtml(s.tools.slice(0, 3).join(', '))}</li>`))}`,
-          actions: [{ label: 'Open expertise matrix', action: 'scroll:about' }],
-        }),
-        experience: () => ({
-          html: `<p>Career path so far:</p>${list(timeline.map((t) => `<li><strong>${escapeHtml(t.title)}</strong>, ${escapeHtml(t.period)}</li>`))}`,
-          actions: [{ label: 'View timeline', action: 'scroll:experience' }],
-        }),
-        contact: () => ({
-          html: `<p>The fastest way to reach ${name} is email: <strong>${escapeHtml(links.email)}</strong>${links.linkedin ? ', or connect on LinkedIn.' : '.'}</p>`,
-          actions: [{ label: 'Copy email', copy: links.email }, { label: 'Go to contact form', action: 'scroll:contact' }],
-        }),
-        fallback: () => ({
-          html: `<p>I'm a lightweight assistant that only knows what's on this page. Try asking about LLMs, projects, skills, experience or contact details.</p>`,
-          actions: [],
-        }),
-      };
-      return (intent) => (builders[intent] ?? builders.fallback)();
-    }
-
-    function renderChatAction(action) {
-      return action.copy
-        ? `<button type="button" class="chip" data-copy="${escapeHtml(action.copy)}">${escapeHtml(action.label)}</button>`
-        : `<button type="button" class="chip" data-chat-action="${escapeHtml(action.action)}">${escapeHtml(action.label)}</button>`;
-    }
-
-    function initChatWidget({ chatConfig, buildReply, projectsController }) {
-      const launcher = $('#chat-launcher');
-      const panel = $('#chat-panel');
-      const messagesEl = $('#chat-messages');
-      const input = $('#chat-input');
-      let hasGreeted = false;
-      let isBusy = false;
-
-      const scrollToBottom = () => { messagesEl.scrollTop = messagesEl.scrollHeight; };
-      const appendMessage = (className, build) => {
-        const el = document.createElement('div');
-        el.className = `msg ${className}`;
-        build(el);
-        messagesEl.appendChild(el);
-        scrollToBottom();
-        return el;
-      };
-      const appendBotReply = ({ html, actions = [] }) => appendMessage('msg-bot', (el) => {
-        el.innerHTML = html + (actions.length ? `<div class="mt-3 flex flex-wrap gap-2">${actions.map(renderChatAction).join('')}</div>` : '');
-      });
-
-      function setOpen(open) {
-        panel.classList.toggle('is-open', open);
-        panel.setAttribute('aria-hidden', String(!open));
-        launcher.setAttribute('aria-expanded', String(open));
-        if (!open) return;
-        if (!hasGreeted) { appendBotReply({ html: `<p>${escapeHtml(chatConfig.greeting)}</p>` }); hasGreeted = true; }
-        setTimeout(() => input.focus(), 200);
-      }
-
-      function ask(text, intent) {
-        if (isBusy) return;
-        isBusy = true;
-        appendMessage('msg-user', (el) => { el.textContent = text; });
-        const typing = appendMessage('msg-bot', (el) => { el.innerHTML = '<span class="typing" aria-label="Assistant is typing"><span></span><span></span><span></span></span>'; });
-        setTimeout(() => {
-          typing.remove();
-          appendBotReply(buildReply(intent));
-          isBusy = false;
-          logger.info('ChatWidget', 'reply', { intent });
-        }, prefersReducedMotion() ? 0 : UI_CONFIG.chat.typingDelayMs);
-      }
-
-      function runChatAction(action) {
-        const [type, value] = action.split(':');
-        if (type === 'filter') { projectsController?.setCategory(value); projectsController?.scrollIntoView(); }
-        if (type === 'scroll') document.getElementById(value)?.scrollIntoView({ behavior: scrollBehavior() });
-        if (window.matchMedia(UI_CONFIG.chat.mobileBreakpoint).matches) setOpen(false);
-      }
-
-      $('#chat-chips').innerHTML = chatConfig.quickPrompts.map((prompt) => `<button type="button" class="chip" data-intent="${prompt.intent}">${escapeHtml(prompt.label)}</button>`).join('');
-      $('#chat-chips').addEventListener('click', (event) => {
-        const chip = event.target.closest('[data-intent]');
-        if (chip) ask(chip.textContent.trim(), chip.dataset.intent);
-      });
-      $('#chat-form').addEventListener('submit', (event) => {
-        event.preventDefault();
-        const text = input.value.trim().slice(0, UI_CONFIG.chat.maxInputLength);
-        if (!text) return;
-        input.value = '';
-        ask(text, detectChatIntent(text, chatConfig.intents));
-      });
-      messagesEl.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-chat-action]');
-        if (button) runChatAction(button.dataset.chatAction);
-      });
-      launcher.addEventListener('click', () => setOpen(!panel.classList.contains('is-open')));
-      $('#chat-close').addEventListener('click', () => { setOpen(false); launcher.focus(); });
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && panel.classList.contains('is-open')) { setOpen(false); launcher.focus(); }
-      });
-    }
-
-    /* =========================================================
-     * 7. NEURAL NETWORK BACKGROUND (canvas)
-     * ========================================================= */
-    function createNeuralBackground(canvas, options) {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas 2D context unavailable');
-      const pointer = { x: -9999, y: -9999 };
-      let particles = [];
-      let width = 0;
-      let height = 0;
-      let frameId = null;
-
-      const createParticles = () => {
-        const count = Math.round(Math.min(options.maxParticles, Math.max(options.minParticles, (width * height) / options.areaPerParticle)));
-        return Array.from({ length: count }, () => ({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          vx: (Math.random() - 0.5) * options.speed * 2,
-          vy: (Math.random() - 0.5) * options.speed * 2,
-          radius: Math.random() * 1.6 + 0.6,
-          color: options.colors[Math.random() < 0.65 ? 0 : 1],
-        }));
-      };
-
-      function resize() {
-        const dpr = Math.min(window.devicePixelRatio || 1, options.maxDpr);
-        const widthChanged = window.innerWidth !== width;
-        width = window.innerWidth;
-        height = window.innerHeight;
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        if (widthChanged || !particles.length) particles = createParticles(); // ignore mobile URL-bar height jitter
-      }
-
-      function updateParticle(p) {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0 || p.x > width) p.vx *= -1;
-        if (p.y < 0 || p.y > height) p.vy *= -1;
-        const dx = p.x - pointer.x;
-        const dy = p.y - pointer.y;
-        const distance = Math.hypot(dx, dy);
-        if (distance > 0 && distance < options.mouseRadius) {
-          const force = (1 - distance / options.mouseRadius) * 0.6;
-          p.x += (dx / distance) * force;
-          p.y += (dy / distance) * force;
-        }
-      }
-
-      function drawLine(from, to, rgb, alpha) {
-        ctx.strokeStyle = `rgba(${rgb},${alpha})`;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(from.x, from.y);
-        ctx.lineTo(to.x, to.y);
-        ctx.stroke();
-      }
-
-      function drawLinks() {
-        const maxDistance = options.linkDistance;
-        particles.forEach((a, i) => {
-          for (let j = i + 1; j < particles.length; j += 1) {
-            const b = particles[j];
-            const distance = Math.hypot(a.x - b.x, a.y - b.y);
-            if (distance < maxDistance) drawLine(a, b, a.color, (1 - distance / maxDistance) * 0.35);
-          }
-          const pointerDistance = Math.hypot(a.x - pointer.x, a.y - pointer.y);
-          if (pointerDistance < options.mouseRadius) drawLine(a, pointer, options.colors[0], (1 - pointerDistance / options.mouseRadius) * 0.5);
-        });
-      }
-
-      function renderFrame() {
-        ctx.clearRect(0, 0, width, height);
-        drawLinks();
-        particles.forEach((p) => {
-          ctx.fillStyle = `rgba(${p.color},0.85)`;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-          ctx.fill();
-        });
-      }
-
-      const loop = () => { particles.forEach(updateParticle); renderFrame(); frameId = requestAnimationFrame(loop); };
-
-      return {
-        resize,
-        renderFrame,
-        start() { if (frameId === null) frameId = requestAnimationFrame(loop); },
-        stop() { if (frameId !== null) { cancelAnimationFrame(frameId); frameId = null; } },
-        setPointer(x, y) { pointer.x = x; pointer.y = y; },
-      };
-    }
-
-    function initNeuralBackground() {
-      const background = createNeuralBackground($('#neural-canvas'), UI_CONFIG.particles);
-      background.resize();
-      if (prefersReducedMotion()) {
-        background.renderFrame();
-        window.addEventListener('resize', debounce(() => { background.resize(); background.renderFrame(); }, UI_CONFIG.resizeDebounceMs));
-        return;
-      }
-      window.addEventListener('resize', debounce(background.resize, UI_CONFIG.resizeDebounceMs));
-      window.addEventListener('pointermove', (event) => background.setPointer(event.clientX, event.clientY), { passive: true });
-      document.documentElement.addEventListener('pointerleave', () => background.setPointer(-9999, -9999));
-      document.addEventListener('visibilitychange', () => (document.hidden ? background.stop() : background.start()));
-      background.start();
-    }
-
-    /* =========================================================
-     * 8. BOOTSTRAP
-     * ========================================================= */
-    function bootstrap() {
-      const config = PORTFOLIO_CONFIG;
-      initModule('StaticIcons', renderStaticIcons);
-      initModule('Profile', () => bindProfile(config.profile));
-      initModule('Navigation', () => { renderNavigation(NAV_ITEMS); initNavigation(NAV_ITEMS); });
-      initModule('Hero', () => { renderTerminal(config.terminal); renderStats(config.stats); initRoleTicker(config.profile.roles); initCounters(); });
-      initModule('About', () => { renderAboutCard(config.profile); renderSkills(config.skills); });
-      const projectsController = initModule('Projects', () => createProjectsController({ projects: config.projects, categories: config.projectCategories }));
-      initModule('SkillProjectLinks', () => initSkillToolLinks(projectsController));
-      initModule('Timeline', () => { renderTimeline(config.timeline); initTimelineToggle(); });
-      initModule('Contact', () => { renderContactLinks(config.links); initContactForm(config.links.email); });
-      initModule('Clipboard', initCopyButtons);
-      initModule('ChatWidget', () => initChatWidget({ chatConfig: config.chat, buildReply: createChatReplyBuilder(config), projectsController }));
-      initModule('RevealAnimations', initRevealAnimations);
-      initModule('NeuralBackground', initNeuralBackground);
-    }
-
-    bootstrap();
-  })();
-  </script>
+  <script src="script.js" defer></script>
 </body>
 </html>
